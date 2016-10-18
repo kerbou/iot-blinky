@@ -1,35 +1,72 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using Dropbox.Api;
+using Dropbox.Api.Files;
 using System;
+using System.IO;
 using Windows.Devices.Gpio;
+using Windows.Media.Capture;
+using Windows.Media.MediaProperties;
+using Windows.Storage;
+using Windows.Storage.Streams;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
 using Windows.UI.Xaml.Media;
+using Windows.UI.Xaml.Media.Imaging;
 
 namespace Blinky
 {
     public sealed partial class MainPage : Page
     {
         private const int LED_PIN = 5;
-        private GpioPin pin;
-        private GpioPinValue pinValue;
-        private DispatcherTimer timer;
-        private SolidColorBrush redBrush = new SolidColorBrush(Windows.UI.Colors.Red);
-        private SolidColorBrush grayBrush = new SolidColorBrush(Windows.UI.Colors.LightGray);
+        private GpioPin _pin;
+        private GpioPinValue _pinValue;
+        private DispatcherTimer _timer;
+        private SolidColorBrush _redBrush = new SolidColorBrush(Windows.UI.Colors.Red);
+        private SolidColorBrush _grayBrush = new SolidColorBrush(Windows.UI.Colors.LightGray);
 
         public MainPage()
         {
             InitializeComponent();
 
-            timer = new DispatcherTimer();
-            timer.Interval = TimeSpan.FromMilliseconds(500);
-            timer.Tick += Timer_Tick;
-            InitGPIO();
-            if (pin != null)
+
+            //InitGPIO();
+            takePhoto();
+                   
+        }
+
+        private async void takePhoto()
+        {
+            try
             {
-                timer.Start();
-            }        
+                //var filename = DateTime.Now.ToString();
+                var filename = DateTime.Now.ToString("o").Replace(":", "-") + ".jpg";
+                var photoFile = await KnownFolders.PicturesLibrary.CreateFileAsync(
+                                filename, CreationCollisionOption.GenerateUniqueName);
+                ImageEncodingProperties imageProperties = ImageEncodingProperties.CreateJpeg();
+
+                var mediaCapture = new MediaCapture();
+                await mediaCapture.InitializeAsync();
+                await mediaCapture.CapturePhotoToStorageFileAsync(imageProperties, photoFile);
+
+                using (IRandomAccessStream photoStream = await photoFile.OpenReadAsync())
+                {
+                    using (var dbx = new DropboxClient("foobar"))
+                    {
+                     
+                        var updated = await dbx.Files.UploadAsync(
+                            "/" + filename,
+                            WriteMode.Overwrite.Instance,
+                            body: photoStream.AsStream());
+
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex.Message);
+            }
         }
 
         private void InitGPIO()
@@ -39,15 +76,15 @@ namespace Blinky
             // Show an error if there is no GPIO controller
             if (gpio == null)
             {
-                pin = null;
+                _pin = null;
                 GpioStatus.Text = "There is no GPIO controller on this device.";
                 return;
             }
 
-            pin = gpio.OpenPin(LED_PIN);
-            pinValue = GpioPinValue.High;
-            pin.Write(pinValue);
-            pin.SetDriveMode(GpioPinDriveMode.Output);
+            _pin = gpio.OpenPin(LED_PIN);
+            _pinValue = GpioPinValue.High;
+            _pin.Write(_pinValue);
+            _pin.SetDriveMode(GpioPinDriveMode.Output);
 
             GpioStatus.Text = "GPIO pin initialized correctly.";
 
@@ -60,18 +97,22 @@ namespace Blinky
 
         private void Timer_Tick(object sender, object e)
         {
-            if (pinValue == GpioPinValue.High)
+            takePhoto();
+
+            if (_pinValue == GpioPinValue.High)
             {
-                pinValue = GpioPinValue.Low;
-                pin.Write(pinValue);
-                LED.Fill = redBrush;
+                _pinValue = GpioPinValue.Low;
+                _pin.Write(_pinValue);
+                LED.Fill = _redBrush;
             }
             else
             {
-                pinValue = GpioPinValue.High;
-                pin.Write(pinValue);
-                LED.Fill = grayBrush;
+                _pinValue = GpioPinValue.High;
+                _pin.Write(_pinValue);
+                LED.Fill = _grayBrush;
             }
+
+
         }
              
 
