@@ -16,7 +16,7 @@ using Windows.UI.Xaml.Controls.Primitives;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
 
-namespace Blinky
+namespace BigBrotherIsHere
 {
     public sealed partial class MainPage : Page
     {        
@@ -24,7 +24,7 @@ namespace Blinky
         {
             InitializeComponent();
             DispatcherTimer t = new DispatcherTimer();
-            t.Interval = TimeSpan.FromSeconds(60 * 1);
+            t.Interval = TimeSpan.FromSeconds(60 * 10); //10 minutes
             t.Tick += Timer_Tick;
             t.Start();                 
         }
@@ -48,8 +48,8 @@ namespace Blinky
                 await mediaCapture.InitializeAsync();
                 await mediaCapture.CapturePhotoToStorageFileAsync(imageProperties, photoFile);
 
-                var sampleFile = await Package.Current.InstalledLocation.GetFileAsync("Assets\\dropbox.secret");
-                var secret = await Windows.Storage.FileIO.ReadTextAsync(sampleFile);
+                var secretsFile = await Package.Current.InstalledLocation.GetFileAsync("Assets\\dropbox.secret");
+                var secret = await Windows.Storage.FileIO.ReadTextAsync(secretsFile);
 
                 using (IRandomAccessStream photoStream = await photoFile.OpenReadAsync())
                 {
@@ -62,6 +62,8 @@ namespace Blinky
 
                     }
                 }
+
+                await photoFile.DeleteAsync(StorageDeleteOption.PermanentDelete);
             }
             catch (Exception ex)
             {
