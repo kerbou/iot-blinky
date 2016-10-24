@@ -24,7 +24,7 @@ namespace BigBrotherIsHere
         {
             InitializeComponent();
             DispatcherTimer t = new DispatcherTimer();
-            t.Interval = TimeSpan.FromSeconds(60 * 10); //10 minutes
+            t.Interval = TimeSpan.FromSeconds(60 * 2); //2 minutes
             t.Tick += Timer_Tick;
             t.Start();                 
         }
