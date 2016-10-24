@@ -4,6 +4,7 @@ using Dropbox.Api;
 using Dropbox.Api.Files;
 using System;
 using System.IO;
+using Windows.ApplicationModel;
 using Windows.Devices.Gpio;
 using Windows.Media.Capture;
 using Windows.Media.MediaProperties;
@@ -18,25 +19,14 @@ using Windows.UI.Xaml.Media.Imaging;
 namespace Blinky
 {
     public sealed partial class MainPage : Page
-    {
-        private const int LED_PIN = 5;
-        private GpioPin _pin;
-        private GpioPinValue _pinValue;
-        private DispatcherTimer _timer;
-        private SolidColorBrush _redBrush = new SolidColorBrush(Windows.UI.Colors.Red);
-        private SolidColorBrush _grayBrush = new SolidColorBrush(Windows.UI.Colors.LightGray);
-
+    {        
         public MainPage()
         {
             InitializeComponent();
-
-
-            //InitGPIO();
-            takePhoto();
-                   
+            TakePhoto();                   
         }
 
-        private async void takePhoto()
+        private async void TakePhoto()
         {
             try
             {
@@ -50,11 +40,13 @@ namespace Blinky
                 await mediaCapture.InitializeAsync();
                 await mediaCapture.CapturePhotoToStorageFileAsync(imageProperties, photoFile);
 
+                var sampleFile = await Package.Current.InstalledLocation.GetFileAsync("Assets\\dropbox.secret");
+                var secret = await Windows.Storage.FileIO.ReadTextAsync(sampleFile);
+
                 using (IRandomAccessStream photoStream = await photoFile.OpenReadAsync())
                 {
-                    using (var dbx = new DropboxClient("foobar"))
-                    {
-                     
+                    using (var dbx = new DropboxClient(secret))
+                    { 
                         var updated = await dbx.Files.UploadAsync(
                             "/" + filename,
                             WriteMode.Overwrite.Instance,
@@ -68,53 +60,6 @@ namespace Blinky
                 System.Diagnostics.Debug.WriteLine(ex.Message);
             }
         }
-
-        private void InitGPIO()
-        {
-            var gpio = GpioController.GetDefault();
-
-            // Show an error if there is no GPIO controller
-            if (gpio == null)
-            {
-                _pin = null;
-                GpioStatus.Text = "There is no GPIO controller on this device.";
-                return;
-            }
-
-            _pin = gpio.OpenPin(LED_PIN);
-            _pinValue = GpioPinValue.High;
-            _pin.Write(_pinValue);
-            _pin.SetDriveMode(GpioPinDriveMode.Output);
-
-            GpioStatus.Text = "GPIO pin initialized correctly.";
-
-        }
-
-   
-
-
-
-
-        private void Timer_Tick(object sender, object e)
-        {
-            takePhoto();
-
-            if (_pinValue == GpioPinValue.High)
-            {
-                _pinValue = GpioPinValue.Low;
-                _pin.Write(_pinValue);
-                LED.Fill = _redBrush;
-            }
-            else
-            {
-                _pinValue = GpioPinValue.High;
-                _pin.Write(_pinValue);
-                LED.Fill = _grayBrush;
-            }
-
-
-        }
-             
-
+        
     }
 }
