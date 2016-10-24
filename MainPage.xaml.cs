@@ -23,7 +23,15 @@ namespace Blinky
         public MainPage()
         {
             InitializeComponent();
-            TakePhoto();                   
+            DispatcherTimer t = new DispatcherTimer();
+            t.Interval = TimeSpan.FromSeconds(60 * 1);
+            t.Tick += Timer_Tick;
+            t.Start();                 
+        }
+
+        private void Timer_Tick(object sender, object e)
+        {
+            TakePhoto();
         }
 
         private async void TakePhoto()
